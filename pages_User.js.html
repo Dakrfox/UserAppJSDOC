@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: pages/User.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: pages/User.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>"use client";
+import { useRouter } from "next/router";
+import React, { useContext, useEffect, useState } from "react";
+import jwt from "jsonwebtoken";
+import getUser from "@/api/GetUser";
+import { softDelete, hardDelete } from "@/api/DeleteUser";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import Avatar from "react-avatar";
+
+import {
+  onHandleUpdate,
+  onHandleUpdatePassword,
+  onHandleUpdateRole,
+} from "@/api/UpdateUser";
+//context
+import { UserContext } from "../context/UserContext";
+//icons
+import { FaRegEdit } from "react-icons/fa";
+import { IoIosWarning } from "react-icons/io";
+import { RiAdminLine } from "react-icons/ri";
+import { CgFileDocument } from "react-icons/cg";
+import { RiHome3Line } from "react-icons/ri";
+import { GrLinkedin } from "react-icons/gr";
+
+//components
+import ContainerComponent from "@/components/ContainerComponent";
+import CardComponent from "@/components/CardComponent";
+import MenuComponent, { MenuItem } from "@/components/MenuComponent";
+
+import dobToAge from "dob-to-age";
+
+import {
+  PrimaryBtn,
+  SecondaryBtn,
+  DangerBtn,
+} from "@/components/ButtonComponent";
+import { InputComponent } from "@/components/InputComponent";
+/**
+ * Renders the User component which displays user information and allows for
+ * updating user data. It also provides functionality for logging out and 
+ * deleting the user account. The component fetches user data from the server
+ * and updates the user context with the fetched data. The component also 
+ * handles password updates and role updates.
+ *
+ * @return {JSX.Element} The rendered User component
+ */
+export default function User() {
+  const SECRETKEY = process.env.SECRETKEY;
+  const { user, setUser } = useContext(UserContext);
+  const Router = useRouter();
+  const succes_notify = (message = "") => {
+    toast.success(`${message}!`, {
+      position: "bottom-right",
+    });
+  };
+
+  const error_notify = (message = "") => {
+    toast.error(`${message}!`, {
+      position: "bottom-right",
+    });
+  };
+  const [userData, setUserData] = useState({});
+  const [updateProfile, setUpdateProfile] = useState(false);
+  const [updatePassword, setUpdatePassword] = useState(false);
+  const [password123, setPassword123] = useState("");
+  const [passwordConfirm123, setPasswordConfirm123] = useState("");
+  const [updateUser, setUpdateUser] = useState({
+    name: "",
+    username: "",
+    email: "",
+    birthdate: "",
+    age: "",
+    phone: "",
+  });
+  const [rol, setRol] = useState("");
+  const [lastLogin, setLastLogin] = useState("");
+  const [updatedAt, setUpdatedAt] = useState(new Date());
+  const handleInputChange = (event, setter) => {
+    switch (event.target.id) {
+      case "123312213":
+        setter({ ...updateUser, name: event.target.value });
+        break;
+      case "username123":
+        setter({ ...updateUser, username: event.target.value });
+        break;
+      case "email123":
+        setter({ ...updateUser, email: event.target.value });
+        break;
+      case "phone123":
+        setter({ ...updateUser, phone: event.target.value });
+        break;
+      case "password123":
+        setter({ ...updateUser, password: event.target.value });
+        break;
+      default:
+        break;
+    }
+  };
+  //pasarlo a handleinputchange
+  const handleInputChangeDate = (event) => {
+    const selectedDate = new Date(event.target.value);
+    const formattedDate = selectedDate.toISOString().slice(0, 10);
+    setUpdateUser({ ...updateUser, birthdate: formattedDate });
+  };
+
+  useEffect(() => {
+    /**
+     * Function to fetch user data and update the state with the retrieved information.
+     *
+     * @return {Promise&lt;void>} No return value explicitly mentioned.
+     */
+    const fetchUser = async () => {
+      const data = await getUser();
+      setUserData(data);
+      setUser(data);
+      setUpdateUser({
+        name: data.name,
+        username: data.username,
+        email: data.email,
+        birthdate: data.birthdate?.substring(0, 10),
+        age: data.age,
+        phone: data.phone,
+      });
+      setRol(data.rol);
+      setUpdatedAt(data.updated_at);
+    };
+
+    fetchUser();
+    const storedToken = localStorage.getItem("authToken");
+    if (storedToken) {
+      const TSlogin = jwt.decode(storedToken).TimeStamp;
+      setLastLogin(new Date(TSlogin));
+    }
+    /**
+     * A function to generate an authentication token expiration.
+     *
+     */
+    const expToken = () => {
+      const token = localStorage.getItem("authToken");
+      const expiration_date = jwt.decode(token, SECRETKEY).exp;
+      setTimeout(
+        () => {
+          onhandleLogout();
+        },
+        (expiration_date - Date.now() / 1000) * 1000,
+      );
+    };
+    expToken();
+  }, []);
+
+  /**
+   * A function to handle user logout by removing authToken, expiring the token cookie, and redirecting to the login page.
+   *
+   * @return {void} No return value
+   */
+  const onhandleLogout = () => {
+    localStorage.removeItem("authToken");
+    document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    Router.push("/Login");
+  };
+
+  /**
+   * A function to handle cancellation actions.
+   *
+   * @return {void} No return value explicitly mentioned.
+   */
+  const onHandleCancel = () => {
+    setUpdateUser({
+      name: userData.name,
+      username: userData.username,
+      email: userData.email,
+      birthdate: userData.birthdate.substring(0, 10),
+      age: userData.age,
+      phone: userData.phone,
+    });
+    setUpdateProfile(false);
+  };
+  /**
+   * A function to handle updating user data.
+   *
+   * @param {Object} userUpdateData - The data to update the user profile
+   * @return {void} No explicit return value
+   */
+  const onHandleUpdate = async (userUpdateData) => {
+    try {
+      const token = localStorage.getItem("authToken");
+      const decoded = jwt.verify(token, SECRETKEY);
+      const userId = decoded.userId;
+      const response = await fetch(`http://localhost:3000/users/${userId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `${token}`,
+        },
+        body: JSON.stringify(userUpdateData),
+      });
+
+      if (response.ok) {
+        succes_notify("Profile Updated");
+        setUpdateProfile(false);
+      } else {
+        error_notify("Something went wrong");
+      }
+    } catch (error) {
+      error_notify("Something went wrong");
+    }
+  };
+/**
+ * Updates the user's password.
+ *
+ * @return {Promise&lt;void>} A promise that resolves when the password is updated successfully.
+ */
+  const onHandleUpdatePassword = async () => {
+    try {
+      if (password123 !== passwordConfirm123) {
+        error_notify("Passwords do not match");
+        return;
+      }
+      const token = localStorage.getItem("authToken");
+      const decoded = jwt.verify(token, SECRETKEY);
+      const userId = decoded.userId;
+      const response = await fetch(`http://localhost:3000/users/${userId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `${token}`,
+        },
+        body: JSON.stringify({ password: password123 }),
+      });
+
+      if (response.ok) {
+        succes_notify("Password Updated");
+        setUpdatePassword(false);
+      } else {
+        error_notify("Something went wrong");
+        console.error("Error:", response.statusText);
+      }
+    } catch (error) {
+      error_notify("Something went wrong");
+      console.error("Error:", error);
+    }
+  };
+/**
+ * Resets the password fields and hides the password update form.
+ *
+ * @return {void} No return value.
+ */
+  const onHandleCancelPwd = () => {
+    setPassword123("");
+    setPasswordConfirm123("");
+    setUpdatePassword(false);
+  };
+  /**
+   * Handles the deactivation of a user.
+   *
+   * @return {Promise&lt;void>} Promise that resolves once the deactivation is handled.
+   */
+  const onHandleDeactivateUser = async () => {
+    const UserDelflag = await softDelete();
+    if (UserDelflag) {
+      succes_notify("User Deleted");
+      onhandleLogout();
+    } else {
+      error_notify("Something went wrong");
+      alert("Error al borrar usuario");
+    }
+  };
+
+  /**
+   * Asynchronously handles the deletion of a user.
+   *
+   * @return {Promise&lt;void>} Promise that resolves once the deletion is handled.
+   */
+  const onHandleDeleteUser = async () => {
+    const UserDelflag = await hardDelete();
+    if (UserDelflag) {
+      succes_notify("User Deleted");
+      onhandleLogout();
+    } else {
+      error_notify("Something went wrong");
+      alert("Error al borrar usuario");
+    }
+  };
+  /**
+   * Asynchronously handles the admin role based on the user role flag.
+   *
+   * @return {void} No return value.
+   */
+  const onHandleAdminRole = async () => {
+    const userRoleFlag = await onHandleUpdateRole();
+    if (userRoleFlag) {
+      succes_notify("Rol Updated");
+      setRol("admin");
+    } else {
+      error_notify("Something went wrong");
+      alert("Error al actualizar rol");
+    }
+  };
+  return (
+    &lt;>
+      &lt;div className="flex min-h-full flex-col justify-between">
+        &lt;MenuComponent>
+          &lt;a href="/">
+            &lt;MenuItem
+              icon={&lt;RiHome3Line size={20} />}
+              text="Home"
+              onClick={() => Router.push("/")}
+            />
+          &lt;/a>
+          &lt;a href="https://github.com/valentinocorrea/next-userapp">
+            &lt;MenuItem
+              icon={&lt;CgFileDocument size={20} />}
+              text="Documentation"
+            />
+          &lt;/a>
+          &lt;a href="https://www.linkedin.com/in/dk-fox">
+            &lt;MenuItem icon={&lt;GrLinkedin size={20} />} text="Contact Dev" />
+          &lt;/a>
+        &lt;/MenuComponent>
+
+        &lt;ContainerComponent className=" text-center w-full p-0 box-border">
+          &lt;div className="min-h-300 grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 lg:grid-rows-4 p-20 mx-10">
+            &lt;div className="min-h-300 lg:row-span-2">
+              &lt;CardComponent
+                className="text-left h-full"
+                title={
+                  &lt;div className="w-full flex justify-between items-center m-0">
+                    &lt;h2 className="mb-2">TimeStamp&lt;/h2>{" "}
+                    &lt;div className="icon cursor-pointer">&lt;/div>
+                  &lt;/div>
+                }
+                body="Body 5"
+              >
+                &lt;h2 className="mb-2 text-lg text-left underline">Login:&lt;/h2>{" "}
+                &lt;p>{"" + lastLogin}&lt;/p> &lt;hr />
+                &lt;h2 className="mb-2 text-lg text-left underline">
+                  User Created at:{" "}
+                &lt;/h2>
+                {"" + new Date(userData.created_at)}
+                &lt;hr />
+                &lt;h2 className="mb-2 text-lg text-left underline">
+                  User last Updated at:
+                &lt;/h2>
+                {"" + new Date(userData.updated_at)}
+                &lt;hr />
+              &lt;/CardComponent>
+            &lt;/div>
+            &lt;div className="min-h-300 lg:row-span-2">
+              &lt;CardComponent
+                className="text-left h-full pt-0 mt-0"
+                title={
+                  &lt;div className="w-full flex justify-between items-center m-0">
+                    &lt;h2 className="mb-2">User Information&lt;/h2>
+                    &lt;div
+                      className={`icon cursor-pointer inline-flex items-center justify-around ${
+                        updatePassword &amp;&amp; "hidden"
+                      }`}
+                      onClick={() => setUpdatePassword(!updatePassword)}
+                    >
+                      &lt;label className="mr-2 cursor-pointer">Edit &lt;/label>
+                      &lt;FaRegEdit />
+                    &lt;/div>
+                  &lt;/div>
+                }
+                body="Body 5"
+              >
+                &lt;div className="text-lg mb-2">
+                  &lt;label>Password&lt;/label>
+                  &lt;InputComponent
+                    id="password123"
+                    type="password"
+                    placeholder="**************"
+                    disabled={updatePassword ? false : true}
+                    value={updatePassword ? password123 : ""}
+                    onChange={(e) => setPassword123(e.target.value)}
+                  >&lt;/InputComponent>
+                &lt;/div>
+                &lt;div className="text-lg mb-2  ">
+                  &lt;label>Confirm Password&lt;/label>
+                  &lt;InputComponent
+                    id="passwordConfirm123"
+                    placeholder="**************"
+                    disabled={updatePassword ? false : true}
+                    type="password"
+                    value={updatePassword ? passwordConfirm123 : ""}
+                    onChange={(e) => setPasswordConfirm123(e.target.value)}
+                  >&lt;/InputComponent>
+                &lt;/div>
+                {updatePassword ? (
+                  &lt;div className="flex items-center ">
+                    &lt;SecondaryBtn
+                      value={"Cancel"}
+                      className={"mt-4 mb-4 mr-2"}
+                      disabled={updatePassword ? false : true}
+                      onClick={onHandleCancelPwd}
+                    >&lt;/SecondaryBtn>
+                    &lt;PrimaryBtn
+                      value={"Save"}
+                      className={"mt-4 mb-4 ml-2"}
+                      disabled={updatePassword ? false : true}
+                      onClick={onHandleUpdatePassword}
+                    >&lt;/PrimaryBtn>
+                  &lt;/div>
+                ) : (
+                  ""
+                )}
+              &lt;/CardComponent>
+            &lt;/div>
+            &lt;div className="min-h-300 lg:row-span-2 lg:col-start-1 lg:row-start-3 ">
+              &lt;CardComponent
+                className={"h-full"}
+                title={
+                  &lt;div className="w-full flex justify-between items-center m-0">
+                    &lt;h2 className="mb-2">Admin Panel&lt;/h2> &lt;RiAdminLine />
+                  &lt;/div>
+                }
+                body="Body 5"
+              >
+                &lt;h2>Role: {rol === "admin" ? "Administrator" : "Standard"}&lt;/h2>
+                &lt;PrimaryBtn
+                  className="mt-4"
+                  value="Request admin Role"
+                  onClick={onHandleAdminRole}
+                  disabled={userData.rol === "admin" ? true : false}
+                >&lt;/PrimaryBtn>
+
+                {rol === "admin"
+                  ? "if you are seen this message, it is because you already have admin role"
+                  : ""}
+              &lt;/CardComponent>
+            &lt;/div>
+            &lt;div className="min-h-300 lg:row-span-2 lg:col-start-2 lg:row-start-3 ">
+              &lt;CardComponent
+                className={"h-full"}
+                title={
+                  &lt;div className="w-full flex justify-between items-center m-0">
+                    &lt;h2 className="mb-2">Security&lt;/h2> &lt;IoIosWarning />
+                  &lt;/div>
+                }
+                body="Body 5"
+              >
+                &lt;SecondaryBtn
+                  className="mt-4"
+                  value="Logout"
+                  onClick={onhandleLogout}
+                >&lt;/SecondaryBtn>
+                &lt;PrimaryBtn
+                  className="mt-4"
+                  value="Deactivate User"
+                  onClick={onHandleDeactivateUser}
+                >&lt;/PrimaryBtn>
+                &lt;DangerBtn
+                  className="mt-4"
+                  value="Delete Account"
+                  onClick={onHandleDeleteUser}
+                >&lt;/DangerBtn>
+              &lt;/CardComponent>
+            &lt;/div>
+
+            &lt;div className="min-h-300 lg:row-span-4 lg:col-start-3 lg:row-start-1 ">
+              &lt;CardComponent
+                title={
+                  &lt;div className="w-full flex justify-between items-center m-0">
+                    &lt;h2 className="mb-2">User Information&lt;/h2>
+                    &lt;div
+                      className={`icon cursor-pointer inline-flex items-center justify-around ${
+                        updateProfile &amp;&amp; "hidden"
+                      }`}
+                      onClick={() => setUpdateProfile(!updateProfile)}
+                    >
+                      &lt;label className="mr-2 cursor-pointer">Edit &lt;/label>
+                      &lt;FaRegEdit />
+                    &lt;/div>
+                  &lt;/div>
+                }
+                className={""}
+              >
+                &lt;ContainerComponent className="flex justify-center items-center ">
+                  &lt;div className="flex flex-col justify-center items-center c left radius-2xl overflow-hidden">
+                    &lt;Avatar
+                      name={updateUser.name}
+                      size={180}
+                      color="#7986cb"
+                      round={"100%"}
+                    />
+                  &lt;/div>
+                  &lt;figcaption>id: {userData._id}&lt;/figcaption>
+                &lt;/ContainerComponent>
+
+                &lt;div className="right text-left">
+                  &lt;ContainerComponent className="text-left flex justify-center w-200 h-200">
+                    &lt;div className="text-lg mb-2  ">
+                      &lt;label>Name&lt;/label>
+                      &lt;InputComponent
+                        id="123312213"
+                        type="text"
+                        placeholder="Name"
+                        disabled={updateProfile ? false : true}
+                        value={updateUser.name}
+                        onChange={(event) =>
+                          handleInputChange(event, setUpdateUser)
+                        }
+                      >&lt;/InputComponent>
+                    &lt;/div>
+                    &lt;div className="text-lg mb-2  ">
+                      &lt;label>Username&lt;/label>
+                      &lt;InputComponent
+                        id="username123"
+                        type="email"
+                        placeholder="Username"
+                        disabled={updateProfile ? false : true}
+                        value={updateUser.username}
+                        onChange={(event) =>
+                          handleInputChange(event, setUpdateUser)
+                        }
+                      >&lt;/InputComponent>
+                    &lt;/div>
+                    &lt;div className="text-lg mb-2  ">
+                      &lt;label>Email&lt;/label>
+                      &lt;InputComponent
+                        id="email123"
+                        type="email"
+                        placeholder="Email"
+                        disabled={updateProfile ? false : true}
+                        value={updateUser.email}
+                        onChange={(event) =>
+                          handleInputChange(event, setUpdateUser)
+                        }
+                      >&lt;/InputComponent>
+                    &lt;/div>
+                    &lt;div className="text-lg mb-2  ">
+                      &lt;label>Birthday&lt;/label>
+                      &lt;InputComponent
+                        id="birthdate123"
+                        type="date"
+                        placeholder="DD/MM/YYYY"
+                        disabled={updateProfile ? false : true}
+                        value={updateUser.birthdate}
+                        onChange={(event) => handleInputChangeDate(event)}
+                      >&lt;/InputComponent>
+                    &lt;/div>
+                    &lt;div className="text-lg mb-2  ">
+                      &lt;label>Age&lt;/label>
+                      &lt;InputComponent
+                        id="age123"
+                        type="text"
+                        placeholder="Age"
+                        disabled={true}
+                        value={dobToAge(updateUser.birthdate)}
+                      >&lt;/InputComponent>
+                    &lt;/div>
+                    &lt;div className="text-lg mb-2  ">
+                      &lt;label>Phone&lt;/label>
+                      &lt;InputComponent
+                        id="phone123"
+                        type="text"
+                        placeholder="Phone"
+                        disabled={updateProfile ? false : true}
+                        value={updateUser.phone}
+                        onChange={(event) =>
+                          handleInputChange(event, setUpdateUser)
+                        }
+                      >&lt;/InputComponent>
+                    &lt;/div>
+                    {updateProfile ? (
+                      &lt;div className="flex items-center ">
+                        &lt;SecondaryBtn
+                          value={"Cancel"}
+                          className={"mt-4 mb-4 mr-2"}
+                          disabled={updateProfile ? false : true}
+                          onClick={onHandleCancel}
+                        >&lt;/SecondaryBtn>
+                        &lt;PrimaryBtn
+                          value={"Save"}
+                          className={"mt-4 mb-4 ml-2"}
+                          disabled={updateProfile ? false : true}
+                          onClick={() => {
+                            onHandleUpdate(updateUser);
+                          }}
+                        >&lt;/PrimaryBtn>
+                      &lt;/div>
+                    ) : (
+                      ""
+                    )}
+                  &lt;/ContainerComponent>
+                &lt;/div>
+              &lt;/CardComponent>
+            &lt;/div>
+          &lt;/div>
+
+          &lt;ToastContainer />
+        &lt;/ContainerComponent>
+      &lt;/div>
+    &lt;/>
+  );
+}
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#DangerBtn">DangerBtn</a></li><li><a href="global.html#InputComponent">InputComponent</a></li><li><a href="global.html#InputSubmit">InputSubmit</a></li><li><a href="global.html#MenuItem">MenuItem</a></li><li><a href="global.html#SecondaryBtn">SecondaryBtn</a></li><li><a href="global.html#getUser">getUser</a></li><li><a href="global.html#hardDelete">hardDelete</a></li><li><a href="global.html#middleware">middleware</a></li><li><a href="global.html#onHandleUpdate">onHandleUpdate</a></li><li><a href="global.html#onHandleUpdatePassword">onHandleUpdatePassword</a></li><li><a href="global.html#onHandleUpdateRole">onHandleUpdateRole</a></li><li><a href="global.html#softDelete">softDelete</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.3</a> on Tue Jul 16 2024 11:22:08 GMT-0500 (Colombia Standard Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

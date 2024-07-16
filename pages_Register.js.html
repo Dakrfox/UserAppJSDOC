@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: pages/Register.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: pages/Register.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>"use client";
+import Link from "next/link";
+import { useRouter } from "next/router";
+import { useContext, useState } from "react";
+import { UserContext } from "../context/UserContext";
+import { InputComponent, InputSubmit } from "@/components/InputComponent";
+import CardComponent from "@/components/CardComponent";
+import ContainerComponent from "@/components/ContainerComponent";
+import dobToAge from "dob-to-age";
+import LoginAuth from "@/api/Login";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
+/**
+ * Handles the form submission for user registration including validation, API call, and success/error notifications.
+ *
+ * @param {Event} e - The form submission event.
+ * @return {void}
+ */
+export default function Register() {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
+  const [birthdate, setBirthdate] = useState(new Date());
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
+  const router = useRouter();
+  const succes_notify = (message = "") => {
+    toast.success(`User ${message} Successfully!`, {
+      position: "bottom-right",
+    });
+  };
+
+  /**
+   * Notifies the user about an error.
+   *
+   * @param {string} message - The error message to display.
+   * @return {void} No return value.
+   */
+  const error_notify = (message = "") => {
+    toast.error(`${message}!`, {
+      position: "bottom-right",
+    });
+  };
+  /**
+   * Handles the form submission, validates form data, sends a POST request to create a new user,
+   * logs in the user if successful, and redirects to the User page.
+   *
+   * @param {Event} e - The form submission event.
+   * @return {void} No return value.
+   */
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      if (!name || !email || !username || !birthdate || !phone || !password) {
+        error_notify("Please fill in all fields");
+        return;
+      }
+      const response = await fetch("http://localhost:3000/users", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name,
+          email,
+          username,
+          birthdate,
+          age: dobToAge(birthdate),
+          phone,
+          password,
+        }),
+      });
+      if (response.ok) {
+        succes_notify("Created");
+        const loginResponse = await LoginAuth(email, password);
+        if (loginResponse) {
+          succes_notify("Logged in");
+          router.push("/User");
+        } else {
+          error_notify();
+        }
+      } else {
+        error_notify("User already exists");
+      }
+    } catch (error) {
+      error_notify("Something went wrong");
+    }
+  };
+  return (
+    &lt;>
+      &lt;ContainerComponent className="flex justify-center items-center h-screen text-center">
+        &lt;CardComponent
+          className="max-w-md mt-2 mb-2"
+          title={"Let's get started"}
+          image="https://img.logoipsum.com/243.svg"
+        >
+          &lt;form onSubmit={handleSubmit}>
+            &lt;label htmlFor="email">Register&lt;/label>
+            &lt;InputComponent
+              id="name"
+              type="text"
+              placeholder="Name"
+              className="max-w-md mt-2 mb-2"
+              onChange={(e) => setName(e.target.value)}
+            />
+            &lt;InputComponent
+              id="email"
+              type="email"
+              placeholder="Email"
+              className="max-w-md mt-3 mb-2"
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            &lt;InputComponent
+              id="username"
+              type="text"
+              placeholder="Username"
+              className="max-w-md mt-2 mb-2"
+              onChange={(e) => setUsername(e.target.value)}
+            />
+
+            &lt;InputComponent
+              id="birthdate"
+              type="date"
+              placeholder="Birthdate"
+              className="max-w-md mt-2 mb-2"
+              onChange={(e) => setBirthdate(e.target.value)}
+            />
+
+            &lt;InputComponent
+              id="phone"
+              type="text"
+              placeholder="Phone"
+              className="max-w-md mt-2 mb-2"
+              onChange={(e) => setPhone(e.target.value)}
+            />
+
+            &lt;InputComponent
+              id="password"
+              type="password"
+              placeholder="Password"
+              className="max-w-md mt-2 mb-2"
+              onChange={(e) => setPassword(e.target.value)}
+            />
+
+            &lt;InputSubmit
+              value="Register"
+              className="max-w-md mt-2 mb-2 cursor-pointer"
+            />
+
+            &lt;ToastContainer />
+            &lt;div className="text-center w-full  mt-2 mb-2">
+              &lt;Link
+                className="text-blue-500 text-sm text-center w-full"
+                href="/Login"
+              >
+                I have already an account
+              &lt;/Link>
+            &lt;/div>
+          &lt;/form>
+        &lt;/CardComponent>
+      &lt;/ContainerComponent>
+    &lt;/>
+  );
+}
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#DangerBtn">DangerBtn</a></li><li><a href="global.html#InputComponent">InputComponent</a></li><li><a href="global.html#InputSubmit">InputSubmit</a></li><li><a href="global.html#MenuItem">MenuItem</a></li><li><a href="global.html#SecondaryBtn">SecondaryBtn</a></li><li><a href="global.html#getUser">getUser</a></li><li><a href="global.html#hardDelete">hardDelete</a></li><li><a href="global.html#middleware">middleware</a></li><li><a href="global.html#onHandleUpdate">onHandleUpdate</a></li><li><a href="global.html#onHandleUpdatePassword">onHandleUpdatePassword</a></li><li><a href="global.html#onHandleUpdateRole">onHandleUpdateRole</a></li><li><a href="global.html#softDelete">softDelete</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.3</a> on Tue Jul 16 2024 11:22:08 GMT-0500 (Colombia Standard Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
